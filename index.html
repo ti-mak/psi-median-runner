@@ -53,6 +53,8 @@ button:disabled{opacity:.5;cursor:progress}
 .keyrow input{flex:1}
 .keybox{display:grid;gap:10px;padding:14px;border:1px dashed var(--line);border-radius:8px}
 .keysaved{margin-left:auto}
+.keyhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.keyhead .linkbtn{font-size:13px}
 .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer}
 .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .err{background:var(--poor-bg);color:var(--poor);border-radius:7px;padding:10px 12px;font-size:14px}
@@ -138,7 +140,7 @@ textarea#fallback{width:100%;height:160px;font:12px var(--f-mono);background:var
         <label class="chk" for="sd"><input type="checkbox" id="sd" checked> Desktop</label>
       </div>
       <div id="keyBox" class="keybox">
-        <label class="f" for="key">PSI API key</label>
+        <div class="keyhead"><label class="f" for="key">PSI API key</label><button type="button" id="closeKey" class="linkbtn" hidden>Cancel</button></div>
         <div class="keyrow"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…"><button type="button" id="showKey" class="ghost sm" aria-pressed="false">Show</button><button type="button" id="copyKey" class="ghost sm">Copy</button></div>
         <label class="chk" for="remember"><input type="checkbox" id="remember" checked> Remember key in this browser</label>
         <p class="hint" style="margin:0">Need a key? Go to <a href="https://developers.google.com/speed/docs/insights/v5/get-started#APIKey" target="_blank" rel="noopener">Get an API key</a>, then in Google Cloud click <b>Credentials</b> and choose <b>Create credentials</b> and <b>API key</b>. It's free and allows 25,000 runs a day. Restrict the key to the PageSpeed Insights API.</p>
@@ -314,10 +316,14 @@ const sBand=s=>s>=90?'good':s>=50?'avg':'poor';
 $('#yr').textContent=new Date().getFullYear();
 $('#showKey').addEventListener('click',()=>{const k=$('#key'),show=k.type==='password';k.type=show?'text':'password';$('#showKey').textContent=show?'Hide':'Show';$('#showKey').setAttribute('aria-pressed',show)});
 $('#copyKey').addEventListener('click',async()=>{const v=$('#key').value.trim();if(!v){toast('No key to copy');return}try{await navigator.clipboard.writeText(v);toast('API key copied')}catch(e){const k=$('#key');k.type='text';$('#showKey').textContent='Hide';k.select();toast('Press Ctrl/Cmd+C to copy')}});
-function setKeyUI(saved){$('#keyBox').hidden=saved;if(saved){$('#key').type='password';$('#showKey').textContent='Show';$('#showKey').setAttribute('aria-pressed','false')}$('#keySaved').hidden=!saved}
+let activeKey='';
+function setKeyUI(saved){$('#keyBox').hidden=saved;$('#closeKey').hidden=saved||!activeKey;if(saved){$('#key').type='password';$('#showKey').textContent='Show';$('#showKey').setAttribute('aria-pressed','false')}$('#keySaved').hidden=!saved}
 $('#changeKey').addEventListener('click',()=>{setKeyUI(false);$('#key').focus();$('#key').select()});
+function closeKeyBox(){$('#key').value=activeKey;setKeyUI(true);$('#changeKey').focus()}
+$('#closeKey').addEventListener('click',closeKeyBox);
+$('#keyBox').addEventListener('keydown',e=>{if(e.key==='Escape'&&activeKey){e.preventDefault();closeKeyBox()}});
 setKeyUI(false);
-try{const k=localStorage.getItem('psi_key');if(k){$('#key').value=k;setKeyUI(true)}const u=localStorage.getItem('psi_url');if(u)$('#url').value=u}catch(e){}
+try{const k=localStorage.getItem('psi_key');if(k){$('#key').value=k;activeKey=k;setKeyUI(true)}const u=localStorage.getItem('psi_url');if(u)$('#url').value=u}catch(e){}
 
 function sourceOf(u,pageHost){
   if(!u||typeof u!=='string')return '';
@@ -357,7 +363,7 @@ $('#f').addEventListener('submit',async e=>{
   $('#error').hidden=true;
   if(!strats.length){showErr('Pick at least one device.');return}
   if(!key){showErr('Add your PageSpeed API key. Without one, Google\'s shared quota is almost always used up.');return}
-  setKeyUI(true);
+  activeKey=key;setKeyUI(true);
   try{if($('#remember').checked)localStorage.setItem('psi_key',key);else localStorage.removeItem('psi_key');localStorage.setItem('psi_url',url)}catch(e){}
   state.url=url;state.runs={};state.summary=null;
   const ctrl=state.ctrl=new AbortController();$('#cancel').hidden=false;$('#cancel').disabled=false;
@@ -378,7 +384,7 @@ $('#f').addEventListener('submit',async e=>{
   clearInterval(tick);$('#go').disabled=false;$('#cancel').hidden=true;
   const done=Object.values(state.runs).reduce((a,r)=>a+r.length,0);
   $('#status').textContent=ctrl.signal.aborted?(done?`Cancelled. Showing results from ${done} completed run${done>1?'s':''}.`:'Cancelled before any run finished.'):`Finished in ${Math.round((Date.now()-t0)/1000)}s`;
-  if(errors.length){showErr(errors.join('\n'));if(errors.some(x=>/API key/.test(x)))setKeyUI(false)}
+  if(errors.length){showErr(errors.join('\n'));if(errors.some(x=>/API key/.test(x))){activeKey='';setKeyUI(false)}}
   if(Object.values(state.runs).some(a=>a.length))render();
 });
 $('#cancel').addEventListener('click',()=>{if(state.ctrl){state.ctrl.abort();$('#cancel').disabled=true;$('#status').textContent='Cancelling…'}});
