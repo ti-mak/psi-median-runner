@@ -49,6 +49,8 @@ button:disabled{opacity:.5;cursor:progress}
 .copy a{color:var(--fg);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
 .copy a:hover{color:var(--accent)}
 .copy{flex-shrink:0;margin-top:auto;border-top:1px solid var(--line);background:rgba(3,5,10,.55);padding-block:16px calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));text-align:center;font-size:13px;color:var(--muted)}
+.keyrow{display:flex;gap:8px;align-items:stretch}
+.keyrow input{flex:1}
 .keybox{display:grid;gap:10px;padding:14px;border:1px dashed var(--line);border-radius:8px}
 .keysaved{margin-left:auto}
 .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer}
@@ -136,7 +138,8 @@ textarea#fallback{width:100%;height:160px;font:12px var(--f-mono);background:var
         <label class="chk" for="sd"><input type="checkbox" id="sd" checked> Desktop</label>
       </div>
       <div id="keyBox" class="keybox">
-        <label class="f" for="key">PSI API key<input id="key" type="password" autocomplete="off" placeholder="AIza…"></label>
+        <label class="f" for="key">PSI API key</label>
+        <div class="keyrow"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…"><button type="button" id="showKey" class="ghost sm" aria-pressed="false">Show</button><button type="button" id="copyKey" class="ghost sm">Copy</button></div>
         <label class="chk" for="remember"><input type="checkbox" id="remember" checked> Remember key in this browser</label>
         <p class="hint" style="margin:0">Need a key? Go to <a href="https://developers.google.com/speed/docs/insights/v5/get-started#APIKey" target="_blank" rel="noopener">Get an API key</a>, then in Google Cloud click <b>Credentials</b> and choose <b>Create credentials</b> and <b>API key</b>. It's free and allows 25,000 runs a day. Restrict the key to the PageSpeed Insights API.</p>
       </div>
@@ -309,7 +312,9 @@ const band=(v,[g,p])=>v==null?'':v<=g?'good':v<=p?'avg':'poor';
 const sBand=s=>s>=90?'good':s>=50?'avg':'poor';
 
 $('#yr').textContent=new Date().getFullYear();
-function setKeyUI(saved){$('#keyBox').hidden=saved;$('#keySaved').hidden=!saved}
+$('#showKey').addEventListener('click',()=>{const k=$('#key'),show=k.type==='password';k.type=show?'text':'password';$('#showKey').textContent=show?'Hide':'Show';$('#showKey').setAttribute('aria-pressed',show)});
+$('#copyKey').addEventListener('click',async()=>{const v=$('#key').value.trim();if(!v){toast('No key to copy');return}try{await navigator.clipboard.writeText(v);toast('API key copied')}catch(e){const k=$('#key');k.type='text';$('#showKey').textContent='Hide';k.select();toast('Press Ctrl/Cmd+C to copy')}});
+function setKeyUI(saved){$('#keyBox').hidden=saved;if(saved){$('#key').type='password';$('#showKey').textContent='Show';$('#showKey').setAttribute('aria-pressed','false')}$('#keySaved').hidden=!saved}
 $('#changeKey').addEventListener('click',()=>{setKeyUI(false);$('#key').focus();$('#key').select()});
 setKeyUI(false);
 try{const k=localStorage.getItem('psi_key');if(k){$('#key').value=k;setKeyUI(true)}const u=localStorage.getItem('psi_url');if(u)$('#url').value=u}catch(e){}
